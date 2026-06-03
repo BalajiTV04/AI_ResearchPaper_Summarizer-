@@ -1,0 +1,13 @@
+backend/.env
+frontend/.env.local
+backend/uploads/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+node_modules/
+.next/
+.DS_Store
+Thumbs.db
+logs/

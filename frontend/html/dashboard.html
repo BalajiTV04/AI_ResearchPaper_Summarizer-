@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - PaperAI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar" id="navbar"></nav>
+
+  <div class="container">
+    <div class="dashboard-header">
+      <div>
+        <h1>My Papers</h1>
+        <p class="subtitle" id="paperCount">Loading papers...</p>
+      </div>
+      <button class="btn-primary" onclick="window.location.href='upload.html'" id="uploadBtn">+ Upload New</button>
+    </div>
+
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="Search papers..." oninput="filterPapers()">
+    </div>
+
+    <div id="loadingPapers">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+        <div class="skeleton-card glass-card"><div class="skeleton" style="width:60%;height:24px;margin-bottom:16px;"></div><div class="skeleton" style="width:100%;height:80px;"></div></div>
+        <div class="skeleton-card glass-card"><div class="skeleton" style="width:60%;height:24px;margin-bottom:16px;"></div><div class="skeleton" style="width:100%;height:80px;"></div></div>
+        <div class="skeleton-card glass-card"><div class="skeleton" style="width:60%;height:24px;margin-bottom:16px;"></div><div class="skeleton" style="width:100%;height:80px;"></div></div>
+      </div>
+    </div>
+    <div id="papersContainer" class="hidden">
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">📄</div>
+        <h3>No papers yet</h3>
+        <p>Upload your first research paper to get started</p>
+        <button class="btn-primary" style="margin-top:20px;" onclick="window.location.href='upload.html'">Upload Paper</button>
+      </div>
+      <div id="paperGrid" class="paper-grid"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!checkAuth()) return;
+    renderNavbar();
+
+    let papers = [];
+
+    async function loadPapers() {
+      try {
+        papers = await apiGet('/papers/');
+        document.getElementById('loadingPapers').classList.add('hidden');
+        document.getElementById('papersContainer').classList.remove('hidden');
+        document.getElementById('paperCount').textContent = `You have ${papers.length} papers uploaded`;
+        renderPapers(papers);
+      } catch (err) {
+        document.getElementById('loadingPapers').innerHTML = `<div class="error-msg">Failed to load papers: ${err.message}</div>`;
+      }
+    }
+
+    function renderPapers(list) {
+      const grid = document.getElementById('paperGrid');
+      const empty = document.getElementById('emptyState');
+
+      if (list.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = list.map(p => `
+        <div class="paper-card" onclick="window.location.href='paper.html?id=${p.id}'">
+          <div class="paper-icon">📄</div>
+          <h3>${p.title || 'Untitled Paper'}</h3>
+          <p class="paper-meta">${p.page_count || '?'} pages • Uploaded ${formatDate(p.uploaded_at)}</p>
+          <button class="delete-btn" onclick="event.stopPropagation(); deletePaper('${p.id}')" title="Delete paper">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function filterPapers() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = papers.filter(p => p.title?.toLowerCase().includes(q));
+      renderPapers(filtered);
+    }
+
+    async function deletePaper(id) {
+      if (!confirm('Delete this paper and all its analysis?')) return;
+      try {
+        await apiDelete(`/papers/${id}`);
+        papers = papers.filter(p => p.id !== id);
+        renderPapers(papers);
+        document.getElementById('paperCount').textContent = `You have ${papers.length} papers uploaded`;
+        showToast('Paper deleted successfully', 'success');
+      } catch (err) {
+        showToast('Delete failed: ' + err.message);
+      }
+    }
+
+    loadPapers();
+  </script>
+</body>
+</html>

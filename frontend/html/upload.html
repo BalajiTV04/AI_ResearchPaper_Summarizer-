@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Paper - PaperAI</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .upload-container {
+      max-width: 600px;
+      margin: 60px auto;
+      text-align: center;
+    }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 60px 40px;
+      margin: 24px 0;
+      transition: all 0.3s;
+      cursor: pointer;
+      background: var(--glass);
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent-blue);
+      background: rgba(99, 102, 241, 0.05);
+    }
+    .upload-zone .upload-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+    .upload-zone p {
+      color: var(--text-muted);
+    }
+    .upload-zone .file-name {
+      color: var(--accent-blue);
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    #uploadProgress {
+      margin-top: 16px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 8px;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar" id="navbar"></nav>
+
+  <div class="container">
+    <div class="upload-container">
+      <h1 style="font-family:var(--font-display);">Upload Research Paper</h1>
+      <p style="color:var(--text-muted); margin-bottom: 24px;">Upload a PDF to analyze with AI</p>
+
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📄</div>
+        <p>Drag & drop your PDF here, or click to browse</p>
+        <p style="font-size: 0.85rem; margin-top: 8px;">Only PDF files are supported</p>
+        <div id="fileName" class="file-name"></div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none;">
+
+      <div id="uploadProgress" class="hidden">
+        <p id="uploadStatus">Uploading...</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="uploadBtn" disabled style="margin-top:16px;">Select a PDF first</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!checkAuth()) return;
+    renderNavbar();
+
+    const dropZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileName = document.getElementById('fileName');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const progressFill = document.getElementById('progressFill');
+
+    let selectedFile = null;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      if (file.type !== 'application/pdf') {
+        showToast('Only PDF files are allowed');
+        return;
+      }
+      selectedFile = file;
+      fileName.textContent = `📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      uploadBtn.textContent = 'Upload Paper';
+      uploadBtn.disabled = false;
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading...';
+      uploadProgress.classList.remove('hidden');
+      uploadStatus.textContent = 'Uploading and processing...';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_URL}/papers/upload`);
+        xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressFill.style.width = pct + '%';
+            uploadStatus.textContent = `Uploading... ${pct}%`;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const data = JSON.parse(xhr.responseText);
+            showToast('Paper uploaded successfully!', 'success');
+            setTimeout(() => {
+              window.location.href = `paper.html?id=${data.paper_id}`;
+            }, 1000);
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              showToast(err.detail || 'Upload failed');
+            } catch {
+              showToast('Upload failed');
+            }
+            resetUpload();
+          }
+        };
+
+        xhr.onerror = () => {
+          showToast('Upload failed - network error');
+          resetUpload();
+        };
+
+        xhr.send(formData);
+      } catch (err) {
+        showToast('Upload failed: ' + err.message);
+        resetUpload();
+      }
+    });
+
+    function resetUpload() {
+      selectedFile = null;
+      fileName.textContent = '';
+      uploadBtn.textContent = 'Select a PDF first';
+      uploadBtn.disabled = true;
+      uploadProgress.classList.add('hidden');
+      progressFill.style.width = '0%';
+      fileInput.value = '';
+    }
+  </script>
+</body>
+</html>

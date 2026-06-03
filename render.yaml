@@ -1,0 +1,25 @@
+services:
+  # Backend FastAPI Web Service
+  - type: web
+    name: ai-research-paper-summarizer-backend
+    runtime: python
+    repo: https://github.com/BalajiTV04/OnlineCourseRegistration.git
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MERCURY_API_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DATABASE
+        value: research_summarizer
+      - key: SECRET_KEY
+        sync: false
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /
+    autoDeploy: true

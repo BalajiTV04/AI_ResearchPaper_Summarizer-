@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaperAI - Research Paper Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar"></nav>
+
+  <!-- Landing Content -->
+  <div class="landing">
+    <h1>Upload Research Papers. Get AI Insights Instantly.</h1>
+    <p>Summarize, Chat, Quiz and Create Presentations from any paper using AI.</p>
+    
+    <div class="landing-cta">
+      <a href="register.html" class="btn-primary">Get Started</a>
+      <a href="login.html" class="btn-secondary">Login</a>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon">📝</div>
+        <h3>Summarization</h3>
+        <p>Get short, detailed, and ELI5 summaries in seconds</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💬</div>
+        <h3>AI Chat</h3>
+        <p>Ask questions and get answers directly from the paper</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">❓</div>
+        <h3>Quiz Generator</h3>
+        <p>Auto-generate MCQs with 3 difficulty levels for self-testing</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📊</div>
+        <h3>PPT Creator</h3>
+        <p>Turn papers into presentation slides instantly</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+      document.getElementById('navbar').innerHTML = `
+        <a href="dashboard.html" class="logo">📄 PaperAI</a>
+        <div class="nav-links">
+          <a href="dashboard.html">Dashboard</a>
+          <span class="username-text">👤 ${getUsernameFromToken()}</span>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+      `;
+    } else {
+      renderAuthNavbar();
+    }
+  </script>
+</body>
+</html>
