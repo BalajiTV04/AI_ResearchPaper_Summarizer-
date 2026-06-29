@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import FloatingChat from '@/components/FloatingChat';
+import MathText from '@/components/MathText';
 import Link from 'next/link';
 import styles from './page.module.css';
 
@@ -24,6 +25,7 @@ export default function PaperPage() {
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [expandingPattern, setExpandingPattern] = useState(null);
   const [expandedContent, setExpandedContent] = useState({});
+  const [extractedImages, setExtractedImages] = useState([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [metadata, setMetadata] = useState(null);
   const [extractingMetadata, setExtractingMetadata] = useState(false);
@@ -81,13 +83,26 @@ export default function PaperPage() {
   }
 
   async function loadImageDescriptions() {
-    if (imageDescriptions.length > 0) return;
+    // Always allow refreshing if images haven't been extracted yet
+    if (imageDescriptions.length > 0 && extractedImages.length > 0) return;
     setLoadingImages(true);
+    
+    // Load AI-generated image descriptions
     try {
-      const data = await api.post(`/ai/images/${paperId}`, {});
-      setImageDescriptions(data.images || []);
+      const descData = await api.post(`/ai/images/${paperId}`, {});
+      setImageDescriptions(descData.images || []);
     } catch (err) {
       console.error('Failed to load image descriptions:', err);
+    }
+    
+    // Load actual extracted images from the PDF
+    try {
+      const imgData = await api.get(`/papers/${paperId}/images`);
+      console.log('Extracted images from PDF:', imgData.images);
+      setExtractedImages(imgData.images || []);
+    } catch (err) {
+      console.error('Failed to load extracted images:', err);
+      alert('Failed to extract images from PDF: ' + err.message);
     } finally {
       setLoadingImages(false);
     }
@@ -120,7 +135,12 @@ export default function PaperPage() {
   function addToCollection(pattern) {
     let info = '';
     if (pattern === 'full') {
-      info = summary?.detailed_summary || '';
+      const detail = summary?.detailed_summary;
+      if (typeof detail === 'object' && detail !== null) {
+        info = Object.values(detail).filter(Boolean).join('\n\n');
+      } else {
+        info = detail || '';
+      }
     } else if (pattern === 'bullet') {
       info = Object.values(keyPoints || {}).flat().join('\n• ') || '';
     } else if (pattern === 'short') {
@@ -144,7 +164,132 @@ export default function PaperPage() {
   }
 
   function downloadCollection() {
-    const content = collectedInfo.join('\n\n---\n\n');
+    // Build comprehensive content from ALL available AI data
+    const parts = [];
+
+    // Paper title
+    if (paper?.title) {
+      parts.push(`# ${paper.title}`);
+      parts.push('');
+    }
+
+    // Short summary
+    if (summary?.short_summary) {
+      parts.push('## 📝 Short Summary');
+      parts.push(summary.short_summary);
+      parts.push('');
+    }
+
+    // Detailed summary (all sections)
+    if (summary?.detailed_summary) {
+      parts.push('## 📖 Detailed Summary');
+      const detail = summary.detailed_summary;
+      if (typeof detail === 'object' && detail !== null) {
+        if (detail.introduction) {
+          parts.push('### 📌 Introduction & Background');
+          parts.push(detail.introduction);
+          parts.push('');
+        }
+        if (detail.methodology) {
+          parts.push('### 🔬 Methodology');
+          parts.push(detail.methodology);
+          parts.push('');
+        }
+        if (detail.results) {
+          parts.push('### 📈 Key Results');
+          parts.push(detail.results);
+          parts.push('');
+        }
+        if (detail.discussion) {
+          parts.push('### 💡 Discussion & Analysis');
+          parts.push(detail.discussion);
+          parts.push('');
+        }
+        if (detail.conclusion) {
+          parts.push('### ✅ Conclusions & Future Work');
+          parts.push(detail.conclusion);
+          parts.push('');
+        }
+      } else if (typeof detail === 'string' && detail.trim()) {
+        parts.push(detail);
+        parts.push('');
+      }
+    }
+
+    // ELI5 summary
+    if (summary?.eli5_summary) {
+      parts.push('## 👶 Explain Like I\'m 5');
+      parts.push(summary.eli5_summary);
+      parts.push('');
+    }
+
+    // Key points
+    if (keyPoints) {
+      parts.push('## 📋 Key Points');
+      if (keyPoints.concepts?.length > 0) {
+        parts.push('### 🎯 Key Concepts');
+        keyPoints.concepts.forEach(c => parts.push(`- ${c}`));
+        parts.push('');
+      }
+      if (keyPoints.methodology?.length > 0) {
+        parts.push('### 🔬 Methodology');
+        keyPoints.methodology.forEach(m => parts.push(`- ${m}`));
+        parts.push('');
+      }
+      if (keyPoints.results?.length > 0) {
+        parts.push('### 📈 Results');
+        keyPoints.results.forEach(r => parts.push(`- ${r}`));
+        parts.push('');
+      }
+      if (keyPoints.conclusions?.length > 0) {
+        parts.push('### ✅ Conclusions');
+        keyPoints.conclusions.forEach(c => parts.push(`- ${c}`));
+        parts.push('');
+      }
+    }
+
+    // Expanded content
+    Object.entries(expandedContent).forEach(([pattern, content]) => {
+      if (content) {
+        parts.push(`## 🔍 Expanded Content (${pattern})`);
+        parts.push(content);
+        parts.push('');
+      }
+    });
+
+    // Image descriptions
+    if (imageDescriptions.length > 0) {
+      parts.push('## 📷 Figures & Images');
+      imageDescriptions.forEach((img, idx) => {
+        parts.push(`### Figure ${idx + 1}: ${img.title || img.type || 'Untitled'}`);
+        if (img.description) parts.push(img.description);
+        if (img.page_context) parts.push(`*📍 ${img.page_context}*`);
+        parts.push('');
+      });
+    }
+
+    // Metadata
+    if (metadata) {
+      parts.push('## 📋 Metadata');
+      if (metadata.authors?.length > 0) parts.push(`**Authors:** ${metadata.authors.join(', ')}`);
+      if (metadata.publication_date) parts.push(`**Publication Date:** ${metadata.publication_date}`);
+      if (metadata.foundation) parts.push(`**Foundation:** ${metadata.foundation}`);
+      if (metadata.journal) parts.push(`**Journal:** ${metadata.journal}`);
+      if (metadata.doi) parts.push(`**DOI:** ${metadata.doi}`);
+      parts.push('');
+    }
+
+    // Also include any manually collected items
+    if (collectedInfo.length > 0) {
+      parts.push('## 📚 Collected Notes');
+      collectedInfo.forEach((info, i) => {
+        parts.push(`### Note ${i + 1}`);
+        parts.push(info);
+        parts.push('');
+      });
+    }
+
+    const content = parts.join('\n');
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -160,8 +305,9 @@ export default function PaperPage() {
   if (error) return <div className="container">{error}</div>;
 
   function renderImagesSection() {
-    const allImages = [...imageDescriptions, ...images];
-    if (allImages.length === 0 && !loadingImages) return null;
+    const hasExtracted = extractedImages.length > 0;
+    const hasDescriptions = imageDescriptions.length > 0 || images.length > 0;
+    if (!hasExtracted && !hasDescriptions && !loadingImages) return null;
 
     return (
       <div className={styles.imagesSection}>
@@ -171,21 +317,70 @@ export default function PaperPage() {
             Extracting image descriptions...
           </p>
         ) : (
-          <div className={styles.imagesGrid}>
-            {allImages.map((img, idx) => (
-              <div key={idx} className={styles.imageCard}>
-                <div className={styles.imagePlaceholder}>
-                  <span>📊</span>
+          <>
+            {/* Actual extracted images from the PDF */}
+            {hasExtracted && (
+              <>
+                <h4 style={{ margin: '16px 0 8px' }}>📸 Extracted Images from PDF</h4>
+                <div className={styles.imagesGrid}>
+                  {extractedImages.map((img, idx) => (
+                    <div key={`ext-${idx}`} className={styles.imageCard}>
+                      <div className={styles.imagePlaceholder} style={{ padding: '4px', background: 'var(--card-bg)' }}>
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_API_URL}${img.url}`}
+                          alt={`Figure from page ${img.page_number}`}
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '300px',
+                            objectFit: 'contain',
+                            borderRadius: '8px',
+                            background: 'white'
+                          }}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextElementSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className={styles.imagePlaceholder} style={{ display: 'none' }}>
+                          <span>📊</span>
+                        </div>
+                      </div>
+                      <p className={styles.imageCaption}>
+                        <strong>Figure from Page {img.page_number}</strong>
+                        {img.width && img.height && (
+                          <><br /><em style={{opacity: 0.6, fontSize: '0.85em'}}>{img.width} × {img.height}px</em></>
+                        )}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <p className={styles.imageCaption}>
-                  <strong>{img.title || img.type || `Figure ${idx + 1}`}</strong>
-                  {img.description && <><br />{img.description}</>}
-                  {img.page_context && <><br /><em style={{opacity: 0.7}}>📍 {img.page_context}</em></>}
-                  {img.caption && <><br />{img.caption}</>}
-                </p>
-              </div>
-            ))}
-          </div>
+              </>
+            )}
+
+            {/* AI-generated image descriptions (fallback/extra info) */}
+            {hasDescriptions && (
+              <>
+                <h4 style={{ margin: '16px 0 8px' }}>📝 AI-Identified Figures</h4>
+                <div className={styles.imagesGrid}>
+                  {(imageDescriptions.length > 0 ? imageDescriptions : images).map((img, idx) => (
+                    <div key={`desc-${idx}`} className={styles.imageCard}>
+                      <div className={styles.imagePlaceholder}>
+                        <span>📊</span>
+                      </div>
+                      <p className={styles.imageCaption}>
+                        <strong>{img.title || img.type || `Figure ${idx + 1}`}</strong>
+                        {img.description && <><br />{img.description}</>}
+                        {img.page_context && <><br /><em style={{opacity: 0.7}}>📍 {img.page_context}</em></>}
+                        {img.caption && <><br />{img.caption}</>}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     );
@@ -219,12 +414,12 @@ export default function PaperPage() {
         <div className={styles.expandedBody}>
           {expandedContent[pattern].split('\n').map((line, i) => {
             if (line.startsWith('•') || line.startsWith('-')) {
-              return <li key={i} className={styles.expandedBullet}>{line}</li>;
+              return <li key={i} className={styles.expandedBullet}><MathText text={line} /></li>;
             }
             if (line.match(/^\d+\./)) {
-              return <li key={i} className={styles.expandedBullet}>{line}</li>;
+              return <li key={i} className={styles.expandedBullet}><MathText text={line} /></li>;
             }
-            return <p key={i} className={styles.expandedPara}>{line}</p>;
+            return <MathText key={i} as="p" className={styles.expandedPara} text={line} />;
           })}
         </div>
       </div>
@@ -275,6 +470,157 @@ export default function PaperPage() {
         </div>
       </div>
     );
+  }
+
+  /**
+   * Parse a plain text detailed summary into structured sections
+   * by detecting section headers like "Introduction", "Methodology", etc.
+   */
+  function parseDetailedSummary(text) {
+    if (!text || typeof text !== 'string') return null;
+    
+    const sectionHeaders = {
+      introduction: ['introduction', 'background', 'introduction & background', 'introduction and background', 'problem'],
+      methodology: ['methodology', 'methods', 'approach', 'method', 'experimental setup'],
+      results: ['results', 'key results', 'findings', 'key findings', 'main findings', 'outcomes'],
+      discussion: ['discussion', 'analysis', 'discussion & analysis', 'discussion and analysis', 'interpretation'],
+      conclusion: ['conclusion', 'conclusions', 'conclusions & future work', 'conclusions and future work', 'future work']
+    };
+    
+    const lines = text.split('\n');
+    const sections = {
+      introduction: '',
+      methodology: '',
+      results: '',
+      discussion: '',
+      conclusion: ''
+    };
+    
+    let currentSection = null;
+    for (const line of lines) {
+      const lineLower = line.trim().toLowerCase();
+      let matched = false;
+      
+      for (const [sectionName, headers] of Object.entries(sectionHeaders)) {
+        for (const header of headers) {
+          if (lineLower.startsWith(header) || 
+              lineLower.startsWith(`1. ${header}`) || 
+              lineLower.startsWith(`2. ${header}`) || 
+              lineLower.startsWith(`3. ${header}`) || 
+              lineLower.startsWith(`4. ${header}`) || 
+              lineLower.startsWith(`5. ${header}`) ||
+              lineLower.startsWith(`**${header}`) ||
+              lineLower.startsWith(`### ${header}`)) {
+            currentSection = sectionName;
+            matched = true;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+      
+      if (currentSection && !matched && line.trim()) {
+        if (sections[currentSection]) {
+          sections[currentSection] += '\n' + line.trim();
+        } else {
+          sections[currentSection] = line.trim();
+        }
+      }
+    }
+    
+    // Only return if at least one section was found
+    if (Object.values(sections).some(v => v.trim())) {
+      return sections;
+    }
+    return null;
+  }
+
+  /**
+   * Render detailed summary content, handling both structured objects and plain text
+   */
+  function renderDetailedSummary(detail) {
+    // If it's already a structured object, render sections
+    if (typeof detail === 'object' && detail !== null) {
+      return (
+        <div className={styles.detailedSections}>
+          {detail.introduction && (
+            <div className={styles.detailCard}>
+              <h4 className={styles.detailTitle}>📌 Introduction & Background</h4>
+              <MathText as="p" className={styles.detailText} text={detail.introduction} />
+            </div>
+          )}
+          {detail.methodology && (
+            <div className={styles.detailCard}>
+              <h4 className={styles.detailTitle}>🔬 Methodology</h4>
+              <MathText as="p" className={styles.detailText} text={detail.methodology} />
+            </div>
+          )}
+          {detail.results && (
+            <div className={styles.detailCard}>
+              <h4 className={styles.detailTitle}>📈 Key Results</h4>
+              <MathText as="p" className={styles.detailText} text={detail.results} />
+            </div>
+          )}
+          {detail.discussion && (
+            <div className={styles.detailCard}>
+              <h4 className={styles.detailTitle}>💡 Discussion & Analysis</h4>
+              <MathText as="p" className={styles.detailText} text={detail.discussion} />
+            </div>
+          )}
+          {detail.conclusion && (
+            <div className={styles.detailCard}>
+              <h4 className={styles.detailTitle}>✅ Conclusions & Future Work</h4>
+              <MathText as="p" className={styles.detailText} text={detail.conclusion} />
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // If it's a plain string, try to parse it into sections
+    if (typeof detail === 'string' && detail.trim()) {
+      const parsed = parseDetailedSummary(detail);
+      if (parsed) {
+        return (
+          <div className={styles.detailedSections}>
+            {parsed.introduction && (
+              <div className={styles.detailCard}>
+                <h4 className={styles.detailTitle}>📌 Introduction & Background</h4>
+                <MathText as="p" className={styles.detailText} text={parsed.introduction} />
+              </div>
+            )}
+            {parsed.methodology && (
+              <div className={styles.detailCard}>
+                <h4 className={styles.detailTitle}>🔬 Methodology</h4>
+                <MathText as="p" className={styles.detailText} text={parsed.methodology} />
+              </div>
+            )}
+            {parsed.results && (
+              <div className={styles.detailCard}>
+                <h4 className={styles.detailTitle}>📈 Key Results</h4>
+                <MathText as="p" className={styles.detailText} text={parsed.results} />
+              </div>
+            )}
+            {parsed.discussion && (
+              <div className={styles.detailCard}>
+                <h4 className={styles.detailTitle}>💡 Discussion & Analysis</h4>
+                <MathText as="p" className={styles.detailText} text={parsed.discussion} />
+              </div>
+            )}
+            {parsed.conclusion && (
+              <div className={styles.detailCard}>
+                <h4 className={styles.detailTitle}>✅ Conclusions & Future Work</h4>
+                <MathText as="p" className={styles.detailText} text={parsed.conclusion} />
+              </div>
+            )}
+          </div>
+        );
+      }
+      // Fallback: render as plain text
+      return <MathText as="p" text={detail} />;
+    }
+    
+    return null;
   }
 
   return (
@@ -384,7 +730,7 @@ export default function PaperPage() {
                       </div>
                     </div>
                     <div className={styles.patternBody}>
-                      <p>{summary.detailed_summary}</p>
+                      {renderDetailedSummary(summary.detailed_summary)}
                       {renderExpandButton('detailed')}
                       {renderExpandedContent('detailed')}
                     </div>
@@ -413,7 +759,7 @@ export default function PaperPage() {
                       </div>
                     </div>
                     <div className={styles.patternBody}>
-                      <p className={styles.shortSummaryText}>{summary.short_summary}</p>
+                      <MathText as="p" className={styles.shortSummaryText} text={summary.short_summary} />
                       {renderExpandButton('short')}
                       {renderExpandedContent('short')}
                     </div>
@@ -432,7 +778,7 @@ export default function PaperPage() {
                     </div>
                     <div className={styles.patternBody}>
                       <div className={styles.eli5Box}>
-                        <p>{summary.eli5_summary}</p>
+                        <MathText as="p" text={summary.eli5_summary} />
                       </div>
                       {renderExpandButton('eli5')}
                       {renderExpandedContent('eli5')}
@@ -456,25 +802,25 @@ export default function PaperPage() {
                           {keyPoints.concepts?.length > 0 && (
                             <div className={styles.bulletSection}>
                               <h4>🎯 Key Concepts</h4>
-                              <ul>{keyPoints.concepts.map((c,i) => <li key={i}>{c}</li>)}</ul>
+                              <ul>{keyPoints.concepts.map((c,i) => <li key={i}><MathText text={c} /></li>)}</ul>
                             </div>
                           )}
                           {keyPoints.methodology?.length > 0 && (
                             <div className={styles.bulletSection}>
                               <h4>🔬 Methodology</h4>
-                              <ul>{keyPoints.methodology.map((m,i) => <li key={i}>{m}</li>)}</ul>
+                              <ul>{keyPoints.methodology.map((m,i) => <li key={i}><MathText text={m} /></li>)}</ul>
                             </div>
                           )}
                           {keyPoints.results?.length > 0 && (
                             <div className={styles.bulletSection}>
                               <h4>📈 Results</h4>
-                              <ul>{keyPoints.results.map((r,i) => <li key={i}>{r}</li>)}</ul>
+                              <ul>{keyPoints.results.map((r,i) => <li key={i}><MathText text={r} /></li>)}</ul>
                             </div>
                           )}
                           {keyPoints.conclusions?.length > 0 && (
                             <div className={styles.bulletSection}>
                               <h4>✅ Conclusions</h4>
-                              <ul>{keyPoints.conclusions.map((c,i) => <li key={i}>{c}</li>)}</ul>
+                              <ul>{keyPoints.conclusions.map((c,i) => <li key={i}><MathText text={c} /></li>)}</ul>
                             </div>
                           )}
                           {renderExpandButton('bullets')}
@@ -498,15 +844,15 @@ export default function PaperPage() {
                   <div className={styles.summaryGrid}>
                     <div className={styles.summaryCard}>
                       <h3>📌 Short Summary</h3>
-                      <p>{summary.short_summary}</p>
+                      <MathText as="p" text={summary.short_summary} />
                     </div>
                     <div className={styles.summaryCard}>
                       <h3>📖 Detailed Summary</h3>
-                      <p>{summary.detailed_summary}</p>
+                      {renderDetailedSummary(summary.detailed_summary)}
                     </div>
                     <div className={styles.summaryCard}>
                       <h3>👶 ELI5</h3>
-                      <p>{summary.eli5_summary}</p>
+                      <MathText as="p" text={summary.eli5_summary} />
                     </div>
                   </div>
                 </div>
@@ -548,19 +894,19 @@ export default function PaperPage() {
                 <div className={styles.keypointsGrid}>
                   <div className={styles.kpSection}>
                     <h3>🎯 Concepts</h3>
-                    <ul>{keyPoints.concepts?.map((c,i) => <li key={i}>{c}</li>)}</ul>
+                    <ul>{keyPoints.concepts?.map((c,i) => <li key={i}><MathText text={c} /></li>)}</ul>
                   </div>
                   <div className={styles.kpSection}>
                     <h3>🔬 Methodology</h3>
-                    <ul>{keyPoints.methodology?.map((m,i) => <li key={i}>{m}</li>)}</ul>
+                    <ul>{keyPoints.methodology?.map((m,i) => <li key={i}><MathText text={m} /></li>)}</ul>
                   </div>
                   <div className={styles.kpSection}>
                     <h3>📈 Results</h3>
-                    <ul>{keyPoints.results?.map((r,i) => <li key={i}>{r}</li>)}</ul>
+                    <ul>{keyPoints.results?.map((r,i) => <li key={i}><MathText text={r} /></li>)}</ul>
                   </div>
                   <div className={styles.kpSection}>
                     <h3>✅ Conclusions</h3>
-                    <ul>{keyPoints.conclusions?.map((c,i) => <li key={i}>{c}</li>)}</ul>
+                    <ul>{keyPoints.conclusions?.map((c,i) => <li key={i}><MathText text={c} /></li>)}</ul>
                   </div>
                 </div>
 
@@ -571,9 +917,9 @@ export default function PaperPage() {
                 <button
                   className={styles.loadImagesBtn}
                   onClick={loadImageDescriptions}
-                  disabled={loadingImages || imageDescriptions.length > 0}
+                  disabled={loadingImages}
                 >
-                  {loadingImages ? 'Loading...' : imageDescriptions.length > 0 ? '✅ Images Loaded' : '📷 View Important Figures & Images'}
+                  {loadingImages ? 'Loading...' : extractedImages.length > 0 ? '✅ Images Loaded' : imageDescriptions.length > 0 ? '📝 Descriptions Loaded, 📸 Click to Extract Images' : '📷 View Important Figures & Images'}
                 </button>
                 {renderImagesSection()}
               </>

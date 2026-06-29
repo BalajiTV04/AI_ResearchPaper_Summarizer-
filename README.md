@@ -98,6 +98,43 @@ Expand any summary format for deeper understanding:
 - AI identifies important figures, tables, charts, and diagrams mentioned in the paper
 - Returns detailed descriptions of what each visual element shows
 
+### 📸 PDF Image Extraction
+- **Extract embedded images** directly from uploaded PDF files using PyMuPDF
+- Displays actual visual content (figures, charts, diagrams) alongside AI-generated descriptions
+- Shows image dimensions, page numbers, and source context
+- Useful for papers where figures contain critical information not captured in text
+
+### 📥 Information Collection & Notes Export
+- **Collect** information from any summary pattern (Short, Detailed, ELI5, Bullet Points) with one click
+- Bundle content from **multiple sources** (summaries, key points, expanded content, image descriptions, metadata)
+- **Download all collected notes** as a `.txt` file for offline reference or further analysis
+- Visual toast notification confirms each collection action
+
+### 🧮 LaTeX Math Rendering
+- Automatic detection and rendering of **LaTeX math expressions** using KaTeX
+- Supports `$...$` for **inline math** and `$$...$$` for **display math**
+- Custom LaTeX macros for common notations (e.g., `\R` → ℝ, `\N` → ℕ)
+- Graceful fallback to plain text if KaTeX fails to load
+- Essential for reading math-heavy academic papers (statistics, theorems, equations)
+
+### 📖 Interactive Reading Style Selector
+- After generating summaries, instantly **switch between reading styles** via an inline quick-select bar
+- Choose from: **Short Summary**, **Detailed Summary**, **ELI5**, **Bullet Points**
+- Each pattern includes an **"Expand"** button for more depth and a **"Collect"** button for notes
+- No need to navigate between separate pages or sections
+
+### 🤖 Floating AI Chat Widget
+- Persistent **floating chatbot** (robot icon in the bottom-right corner) accessible from any paper page
+- **Suggested questions** to start conversations (e.g., "What is the main finding?")
+- Welcome screen introducing the AI Research Assistant with paper title context
+- Typing indicator, formatted responses (bold, lists, code blocks), and chat history
+- Responses are **strictly based on the paper content** — no external knowledge
+
+### 🔄 Metadata Re-extraction
+- Extract or **re-extract** paper metadata (authors, publication date, institution, journal, DOI) anytime
+- UI shows "Extract Metadata" button initially, then switches to "Re-extract" after first extraction
+- Useful if the first extraction missed fields or if you want updated results
+
 ### 👑 Admin Dashboard
 - **Admin Login** – Secure admin authentication
 - **User Management** – View all registered users with their activity
@@ -152,6 +189,24 @@ python-pptx creates professional dark-themed presentation →
 User can download .pptx file or regenerate
 ```
 
+### 6. Image Extraction Flow
+```
+User requests images → PyMuPDF scans PDF for embedded images →
+Images extracted with dimensions & page numbers →
+AI generates descriptions of figures/tables →
+Both actual images and AI descriptions displayed in UI
+```
+
+### 7. Notes Collection Flow
+```
+User clicks "Collect" on any summary pattern →
+Content added to in-memory notes bundle →
+User can continue collecting from multiple patterns →
+"Download All" exports everything as a .txt file
+(combines summaries, key points, expanded content,
+ image descriptions, and metadata)
+```
+
 ---
 
 ## 🛠️ Tech Stack
@@ -160,6 +215,7 @@ User can download .pptx file or regenerate
 |-------|-----------|---------|
 | **Frontend** | [Next.js 14](https://nextjs.org) (App Router) + [React 18](https://react.dev) | UI framework & routing |
 | **Frontend Styling** | CSS Modules | Component-scoped styling |
+| **Math Rendering** | [KaTeX](https://katex.org) | LaTeX math expression rendering (`$...$` / `$$...$$`) |
 | **Backend** | [Python 3.9+](https://python.org) + [FastAPI](https://fastapi.tiangolo.com) | REST API server |
 | **Database** | [MongoDB](https://mongodb.com) + [Motor](https://motor.readthedocs.io) (async driver) | Data persistence |
 | **AI / LLM** | [Inception Labs Mercury API](https://inceptionlabs.ai) | Text generation, summarization, Q&A |
@@ -215,6 +271,7 @@ AI_ResearchPaper_Summarizer/
 │   │   ├── PaperCard.js / .module.css  # Paper listing card
 │   │   ├── ChatBox.js / .module.css    # Chat interface
 │   │   ├── FloatingChat.js / .module.css # Floating chat button
+│   │   ├── MathText.js                # LaTeX math rendering (KaTeX)
 │   │   ├── QuizCard.js / .module.css    # Quiz question card
 │   │   └── SkeletonLoader.js         # Loading skeleton
 │   ├── lib/                          # Utility functions
@@ -370,6 +427,7 @@ The backend runs on `http://localhost:8000` and the frontend on `http://localhos
 | `GET` | `/papers/{id}` | Get paper details with extracted text |
 | `DELETE` | `/papers/{id}` | Delete a paper |
 | `POST` | `/papers/{id}/extract-metadata` | Extract metadata via AI |
+| `GET` | `/papers/{id}/images` | Extract and return images embedded in the PDF |
 | `POST` | `/papers/{id}/bookmark` | Toggle bookmark |
 
 ### AI Services (`/ai`)
@@ -502,4 +560,4 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 ---
 
-<p align="center">Made with ❤️ for the research community</p>
+<p align="center">Made with  for the research community</p>

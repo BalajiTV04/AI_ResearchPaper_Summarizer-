@@ -15,6 +15,7 @@ from services.ai_service import (
     generate_ppt_content,
     expand_content,
     generate_image_descriptions,
+    AIServiceError,
 )
 from services.ppt_generator import create_pptx
 import json
@@ -28,11 +29,14 @@ async def summarize(paper_id: str, current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
     text = paper["extracted_text"]
-    short, detailed, eli5 = await asyncio.gather(
-        generate_short_summary(text),
-        generate_detailed_summary(text),
-        generate_eli5_summary(text),
-    )
+    try:
+        short, detailed, eli5 = await asyncio.gather(
+            generate_short_summary(text),
+            generate_detailed_summary(text),
+            generate_eli5_summary(text),
+        )
+    except AIServiceError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
     await summaries_collection.insert_one({
         "paper_id": paper_id,
@@ -50,7 +54,10 @@ async def keypoints(paper_id: str, current_user: dict = Depends(get_current_user
     if not paper or paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
-    key_points = await generate_key_points(paper["extracted_text"])
+    try:
+        key_points = await generate_key_points(paper["extracted_text"])
+    except AIServiceError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
     await summaries_collection.update_one(
         {"paper_id": paper_id},
@@ -164,7 +171,10 @@ async def expand_summary(paper_id: str, pattern: str, current_user: dict = Depen
     if not paper or paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
-    expanded = await expand_content(paper["extracted_text"], pattern)
+    try:
+        expanded = await expand_content(paper["extracted_text"], pattern)
+    except AIServiceError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return {"content": expanded, "pattern": pattern}
 
 @router.post("/images/{paper_id}")
@@ -174,7 +184,10 @@ async def describe_images(paper_id: str, current_user: dict = Depends(get_curren
     if not paper or paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
-    images = await generate_image_descriptions(paper["extracted_text"])
+    try:
+        images = await generate_image_descriptions(paper["extracted_text"])
+    except AIServiceError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return {"images": images}
 
 @router.post("/ppt/{paper_id}/regenerate")
@@ -195,8 +208,11 @@ Return ONLY a JSON array, no markdown:
 
 Paper content: {paper['extracted_text'][:30000]}"""
     
-    from services.ai_service import _gen, _parse_json
-    raw = await _gen(prompt_text)
+    from services.ai_service import _gen, _parse_json, AIServiceError
+    try:
+        raw = await _gen(prompt_text)
+    except AIServiceError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     try:
         slides = _parse_json(raw)
         if not isinstance(slides, list) or len(slides) == 0:

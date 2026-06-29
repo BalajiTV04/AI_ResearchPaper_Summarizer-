@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import MathText from '@/components/MathText';
 import styles from './QuizCard.module.css';
 
 export default function QuizCard({ question, onNext, isLast, onCorrect, difficulty, questionIndex, totalQuestions }) {
@@ -55,7 +56,7 @@ export default function QuizCard({ question, onNext, isLast, onCorrect, difficul
           </span>
         )}
       </div>
-      <h3 className={styles.question}>{question.question}</h3>
+      <h3 className={styles.question}><MathText text={question.question} /></h3>
 
       <div className={styles.options}>
         {question.options.map((opt, idx) => {

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from auth import get_current_user
 from models import papers_collection, bookmarks_collection
 from database import str_to_id, id_to_str
-from services.pdf_service import extract_text_from_pdf, save_uploaded_file
+from services.pdf_service import extract_text_from_pdf, save_uploaded_file, extract_images_from_pdf
 from services.ai_service import extract_paper_metadata
 
 router = APIRouter(prefix="/papers", tags=["Papers"])
@@ -89,6 +89,27 @@ async def extract_metadata(paper_id: str, current_user: dict = Depends(get_curre
     )
 
     return metadata
+
+@router.get("/{paper_id}/images")
+async def get_paper_images(paper_id: str, current_user: dict = Depends(get_current_user)):
+    """Extract and return images embedded in the PDF file"""
+    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    if paper["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
+    file_path = paper["file_path"]
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="PDF file not found on disk")
+    
+    try:
+        images = extract_images_from_pdf(file_path, upload_dir, paper_id)
+        return {"images": images}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to extract images: {str(e)}")
 
 @router.post("/{paper_id}/bookmark")
 async def toggle_bookmark(paper_id: str, current_user: dict = Depends(get_current_user)):

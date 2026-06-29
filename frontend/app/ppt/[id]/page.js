@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import MathText from '@/components/MathText';
 import Link from 'next/link';
 import styles from './page.module.css';
 
@@ -188,7 +189,7 @@ export default function PptPage() {
               {slide.bullets?.map((bullet, i) => (
                 <li key={i} className={styles.slideBullet}>
                   <span className={styles.bulletIcon}>✦</span>
-                  <span>{bullet}</span>
+                  <MathText text={bullet} />
                 </li>
               ))}
             </ul>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
+import MathText from '@/components/MathText';
 import styles from './ChatBox.module.css';
 
 export default function ChatBox({ paperId, paperTitle }) {
@@ -58,7 +59,7 @@ export default function ChatBox({ paperId, paperTitle }) {
             key={idx}
             className={`${styles.msgBubble} ${msg.role === 'user' ? styles.user : styles.assistant}`}
           >
-            <p>{msg.content}</p>
+            <MathText text={msg.content} />
           </div>
         ))}
         {loading && (

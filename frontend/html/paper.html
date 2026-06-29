@@ -105,6 +105,46 @@
     .chat-messages::-webkit-scrollbar { width: 6px; }
     .chat-messages::-webkit-scrollbar-track { background: transparent; }
     .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    
+    /* Images Section Styles */
+    .images-section {
+      width: 100%;
+    }
+    .images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .image-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+    .image-card:hover {
+      transform: translateY(-2px);
+    }
+    .image-placeholder {
+      width: 100%;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    }
+    .image-placeholder span {
+      font-size: 48px;
+      opacity: 0.5;
+    }
+    .image-caption {
+      padding: 12px 16px;
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -154,6 +194,10 @@
             <button class="btn-primary" onclick="extractKeyPoints()">Extract Key Points</button>
           </div>
           <div id="kpDisplay" class="keypoints-grid hidden"></div>
+          <div style="margin-top: 20px;">
+            <button class="btn-primary" onclick="loadImages()" id="loadImagesBtn">📷 View Important Figures & Images</button>
+            <div id="imagesSection" class="images-section" style="margin-top: 16px;"></div>
+          </div>
         </div>
         <!-- Info Tab -->
         <div id="tabInfo" class="tab-panel hidden">
@@ -233,6 +277,90 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
       document.querySelector(`.tab:nth-child(${tab === 'summary' ? 1 : tab === 'keypoints' ? 2 : 3})`).classList.add('active');
       document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('hidden');
+    }
+
+    // --- Images ---
+    let extractedPdfImages = [];
+    let imageDescriptions = [];
+
+    async function loadImages() {
+      const btn = document.getElementById('loadImagesBtn');
+      if (btn) btn.disabled = true;
+      try {
+        // Load actual extracted images from PDF
+        try {
+          const imgData = await apiGet(`/papers/${paperId}/images`);
+          extractedPdfImages = imgData.images || [];
+        } catch (err) {
+          console.error('Failed to extract PDF images:', err);
+        }
+        // Load AI descriptions
+        try {
+          const descData = await apiPost(`/ai/images/${paperId}`, {});
+          imageDescriptions = descData.images || [];
+        } catch (err) {
+          console.error('Failed to load image descriptions:', err);
+        }
+        renderImagesSection();
+      } catch (err) {
+        showToast('Failed: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderImagesSection() {
+      const container = document.getElementById('imagesSection');
+      if (!container) return;
+      
+      let html = '';
+      
+      // Actual extracted images
+      if (extractedPdfImages.length > 0) {
+        html += `<h4 style="margin: 16px 0 8px;">📸 Extracted Images from PDF</h4>`;
+        html += `<div class="images-grid">`;
+        extractedPdfImages.forEach(img => {
+          html += `
+            <div class="image-card">
+              <div class="image-placeholder" style="padding: 4px; background: var(--card-bg);">
+                <img src="${API_URL}${img.url}" 
+                     alt="Figure from page ${img.page_number}"
+                     style="width: 100%; height: auto; max-height: 300px; object-fit: contain; border-radius: 8px; background: white;"
+                     loading="lazy"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                <div class="image-placeholder" style="display: none;"><span>📊</span></div>
+              </div>
+              <p class="image-caption"><strong>Figure from Page ${img.page_number}</strong></p>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+      
+      // AI descriptions
+      if (imageDescriptions.length > 0) {
+        html += `<h4 style="margin: 16px 0 8px;">📝 AI-Identified Figures</h4>`;
+        html += `<div class="images-grid">`;
+        imageDescriptions.forEach((img, idx) => {
+          html += `
+            <div class="image-card">
+              <div class="image-placeholder"><span>📊</span></div>
+              <p class="image-caption">
+                <strong>${img.title || img.type || 'Figure ' + (idx + 1)}</strong>
+                ${img.description ? '<br/>' + img.description : ''}
+                ${img.page_context ? '<br/><em style="opacity:0.7">📍 ' + img.page_context + '</em>' : ''}
+              </p>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+      
+      if (!html) {
+        html = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No images found in this paper.</p>';
+      }
+      
+      container.innerHTML = html;
     }
 
     // --- Summaries ---
