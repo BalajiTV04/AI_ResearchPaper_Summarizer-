@@ -41,9 +41,6 @@ const nextConfig = {
     ];
   },
 
-  // Disable Next.js image optimization for external URLs
-  unoptimized: false,
-
   // Standalone output for self-hosting (optional)
   // output: 'standalone',
 };
