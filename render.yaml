@@ -1,13 +1,14 @@
 services:
   # Backend FastAPI Web Service
   - type: web
-    name: ai-research-paper-summarizer-backend
+    name: ai-researchpaper-summarizer
     runtime: python
     repo: https://github.com/BalajiTV04/AI_ResearchPaper_Summarizer-.git
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Procfile is also provided at backend/Procfile as fallback
     envVars:
       - key: MERCURY_API_KEY
         sync: false
@@ -18,7 +19,7 @@ services:
       - key: SECRET_KEY
         sync: false
       - key: CORS_ORIGINS
-        value: https://ai-based-research-summarizer.vercel.app
+        value: https://ai-based-research-paper-summarizer.vercel.app
       - key: UPLOAD_DIR
         value: /tmp/uploads
       - key: PYTHON_VERSION
