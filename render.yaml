@@ -3,7 +3,7 @@ services:
   - type: web
     name: ai-research-paper-summarizer-backend
     runtime: python
-    repo: https://github.com/BalajiTV04/OnlineCourseRegistration.git
+    repo: https://github.com/BalajiTV04/AI_ResearchPaper_Summarizer-.git
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -17,9 +17,17 @@ services:
         value: research_summarizer
       - key: SECRET_KEY
         sync: false
+      - key: CORS_ORIGINS
+        value: https://ai-based-research-summarizer.vercel.app
       - key: UPLOAD_DIR
         value: /tmp/uploads
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
     healthCheckPath: /
     autoDeploy: true

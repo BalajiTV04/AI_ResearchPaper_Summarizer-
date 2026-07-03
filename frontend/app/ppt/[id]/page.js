@@ -63,7 +63,7 @@ export default function PptPage() {
   async function handleDownload() {
     setDownloading(true);
     try {
-      const response = await fetch(`http://localhost:8000/ai/ppt/${paperId}/download`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ai/ppt/${paperId}/download`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
