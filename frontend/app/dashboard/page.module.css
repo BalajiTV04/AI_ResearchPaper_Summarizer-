@@ -6,27 +6,32 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: clamp(20px, 4vw, 32px);
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .header h1 {
   font-family: 'Syne', sans-serif;
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
   margin-bottom: 4px;
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 .uploadBtn {
-  padding: 14px 28px;
+  padding: clamp(10px, 1.5vw, 14px) clamp(20px, 3vw, 28px);
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   color: white;
   border-radius: var(--radius);
   font-weight: 600;
+  font-size: clamp(0.85rem, 1.2vw, 1rem);
   transition: all 0.2s;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .uploadBtn:hover {
@@ -34,21 +39,21 @@
 }
 
 .searchBar {
-  margin-bottom: 32px;
+  margin-bottom: clamp(20px, 4vw, 32px);
 }
 
 .searchBar input {
   width: 100%;
-  max-width: 500px;
+  max-width: min(500px, 100%);
   padding: 12px 20px;
   border-radius: 50px;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: clamp(16px, 3vw, 24px);
 }
 
 .cardWrapper {
@@ -57,8 +62,8 @@
 
 .deleteBtn {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   background: rgba(239,68,68,0.8);
   color: white;
   border: none;
@@ -82,32 +87,88 @@
   background: #ef4444;
 }
 
+/* On mobile, always show delete button since there's no hover */
+@media (max-width: 640px) {
+  .deleteBtn {
+    opacity: 1;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+}
+
 .empty {
   text-align: center;
-  padding: 80px 20px;
+  padding: clamp(40px, 10vw, 80px) 20px;
 }
 
 .emptyIcon {
-  font-size: 5rem;
-  margin-bottom: 20px;
+  font-size: clamp(3rem, 8vw, 5rem);
+  margin-bottom: clamp(12px, 3vw, 20px);
 }
 
 .empty h3 {
   font-family: 'Syne', sans-serif;
-  font-size: 1.8rem;
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
   margin-bottom: 8px;
 }
 
 .empty p {
   color: var(--text-muted);
   margin-bottom: 24px;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 .uploadLink {
   display: inline-block;
-  padding: 14px 28px;
+  padding: clamp(10px, 1.5vw, 14px) clamp(20px, 3vw, 28px);
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   color: white;
   border-radius: var(--radius);
   font-weight: 600;
+  font-size: clamp(0.85rem, 1.2vw, 1rem);
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Small phones */
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .uploadBtn {
+    width: 100%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Laptop and above */
+@media (min-width: 1025px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

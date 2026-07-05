@@ -1,44 +1,48 @@
-import bcrypt
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from database import get_supabase
 import os
-from models import users_collection, papers_collection
-from database import str_to_id
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+security = HTTPBearer()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "defaultsecret")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 60
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify Supabase JWT token and return the user"""
+    token = credentials.credentials
+    supabase = get_supabase()
+    
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
+        # Verify the JWT token with Supabase Auth
+        user_response = supabase.auth.get_user(token)
+        user = user_response.user
+        
+        if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        
+        return {
+            "id": user.id,
+            "email": user.email,
+            "name": user.user_metadata.get("name", user.email),
+            "role": user.user_metadata.get("role", "user")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
-    user = await users_collection.find_one({"_id": str_to_id(user_id)})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    user["id"] = str(user["_id"])
+
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify admin user from Supabase JWT"""
+    user = await get_current_user(credentials)
+    
+    # Check if user has admin role in their metadata
+    if user.get("role") != "admin":
+        # Also check admin credentials from env
+        admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+        
+        # Allow admin login via special check
+        if user.get("email") != f"{admin_username}@admin.com":
+            raise HTTPException(status_code=403, detail="Admin access required")
+    
     return user

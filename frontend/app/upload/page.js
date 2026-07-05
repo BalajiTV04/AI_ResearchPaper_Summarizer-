@@ -20,12 +20,12 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="container" style={{ paddingTop: '60px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: '2.5rem', marginBottom: '12px' }}>
+    <div className="container" style={{ paddingTop: 'clamp(32px, 8vw, 60px)' }}>
+      <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 5vw, 40px)' }}>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', marginBottom: '12px' }}>
           Upload Research Paper
         </h1>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(0.85rem, 1.5vw, 1rem)' }}>
           Select a PDF file to analyze with AI
         </p>
       </div>

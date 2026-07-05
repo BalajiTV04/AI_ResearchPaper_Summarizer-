@@ -32,7 +32,7 @@ upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
-# Import routes - sys.path already has backend/ added above
+# Import routes
 from routes import auth_routes, paper_routes, ai_routes, chat_routes, admin_routes
 
 app.include_router(auth_routes.router)

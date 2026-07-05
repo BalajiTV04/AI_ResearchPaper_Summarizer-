@@ -849,12 +849,158 @@
   margin: 0;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Small phones */
+@media (max-width: 480px) {
   .header h1 {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
   }
-  
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .actionBtn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    width: 100%;
+    text-align: center;
+  }
+
+  .keypointsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patternQuickButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .metadataHeader {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .extractMetadataBtn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .patternActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .collectBtn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .collectedHeader {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .downloadBtn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .expandedHeader {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .header h1 {
+    font-size: 1.3rem;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actionBtn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .keypointsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patternQuickButtons {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .imagesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .generateSection {
+    padding: 40px 16px;
+  }
+
+  .summaryCard {
+    padding: 16px;
+  }
+
+  .infoCard {
+    max-width: 100%;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .header h1 {
+    font-size: 1.6rem;
+  }
+
+  .keypointsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .patternQuickButtons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .imagesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Laptop and above */
+@media (min-width: 1025px) {
+  .keypointsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .imagesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+/* Shared responsive patterns */
+@media (max-width: 768px) {
   .patternSelector {
     flex-direction: column;
   }
@@ -876,9 +1022,5 @@
     bottom: 80px;
     flex-direction: column;
     text-align: center;
-  }
-  
-  .imagesGrid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }

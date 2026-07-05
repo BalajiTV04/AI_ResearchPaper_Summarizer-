@@ -3,8 +3,7 @@ from fastapi.responses import StreamingResponse
 import asyncio
 import io
 from auth import get_current_user
-from models import papers_collection, summaries_collection, quizzes_collection, ppt_collection
-from database import str_to_id
+from database import get_supabase
 from services.ai_service import (
     generate_short_summary,
     generate_detailed_summary,
@@ -22,11 +21,18 @@ import json
 
 router = APIRouter(prefix="/ai", tags=["AI Services"])
 
+def get_paper_or_404(supabase, paper_id: str, user_id: str):
+    """Helper to get a paper and verify ownership"""
+    result = supabase.table("papers").select("*").eq("id", paper_id).single().execute()
+    paper = result.data
+    if not paper or paper["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    return paper
+
 @router.post("/summarize/{paper_id}")
 async def summarize(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     text = paper["extracted_text"]
     try:
@@ -38,73 +44,71 @@ async def summarize(paper_id: str, current_user: dict = Depends(get_current_user
     except AIServiceError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    await summaries_collection.insert_one({
+    supabase.table("summaries").insert({
         "paper_id": paper_id,
         "short_summary": short,
         "detailed_summary": detailed,
         "eli5_summary": eli5,
         "key_points": None
-    })
+    }).execute()
 
     return {"short_summary": short, "detailed_summary": detailed, "eli5_summary": eli5}
 
 @router.post("/keypoints/{paper_id}")
 async def keypoints(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     try:
         key_points = await generate_key_points(paper["extracted_text"])
     except AIServiceError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    await summaries_collection.update_one(
-        {"paper_id": paper_id},
-        {"$set": {"key_points": key_points}}
-    )
+    supabase.table("summaries").update({"key_points": key_points}).eq("paper_id", paper_id).execute()
 
     return key_points
 
 @router.get("/quiz/{paper_id}")
 async def get_quiz(paper_id: str, current_user: dict = Depends(get_current_user)):
-    quiz_data = await quizzes_collection.find_one({"paper_id": paper_id})
-    if not quiz_data:
+    supabase = get_supabase()
+    result = supabase.table("quizzes").select("*").eq("paper_id", paper_id).execute()
+    
+    if not result.data:
         raise HTTPException(status_code=404, detail="No quiz found for this paper")
-    return {"questions": quiz_data.get("questions", [])}
+    return {"questions": result.data[0].get("questions", [])}
 
 @router.post("/quiz/{paper_id}")
 async def generate_quiz_items(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     questions = await generate_quiz(paper["extracted_text"])
 
-    await quizzes_collection.insert_one({
+    supabase.table("quizzes").insert({
         "paper_id": paper_id,
         "questions": questions
-    })
+    }).execute()
 
     return {"questions": questions}
 
 @router.get("/ppt/{paper_id}")
 async def get_ppt(paper_id: str, current_user: dict = Depends(get_current_user)):
-    ppt_data = await ppt_collection.find_one({"paper_id": paper_id})
-    if not ppt_data:
+    supabase = get_supabase()
+    result = supabase.table("ppt_content").select("*").eq("paper_id", paper_id).execute()
+    
+    if not result.data:
         raise HTTPException(status_code=404, detail="No presentation found for this paper")
-    return {"slides": ppt_data.get("slides", [])}
+    return {"slides": result.data[0].get("slides", [])}
 
 @router.get("/quiz/{paper_id}/results")
 async def get_quiz_results(paper_id: str, current_user: dict = Depends(get_current_user)):
     """Get quiz results for all difficulty levels"""
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
     
-    cursor = quizzes_collection.find({"paper_id": paper_id})
+    result = supabase.table("quizzes").select("*").eq("paper_id", paper_id).execute()
     results = {}
-    async for row in cursor:
+    for row in result.data or []:
         diff = row.get("difficulty", "mixed")
         questions = row.get("questions", [])
         results[diff] = {
@@ -121,43 +125,49 @@ async def get_quiz_results(paper_id: str, current_user: dict = Depends(get_curre
 async def get_quiz_by_difficulty(paper_id: str, difficulty: str, current_user: dict = Depends(get_current_user)):
     if difficulty not in ["easy", "medium", "hard"]:
         raise HTTPException(status_code=400, detail="Difficulty must be easy, medium, or hard")
-    quiz_data = await quizzes_collection.find_one({"paper_id": paper_id, "difficulty": difficulty})
-    if not quiz_data:
+    
+    supabase = get_supabase()
+    result = supabase.table("quizzes")\
+        .select("*")\
+        .eq("paper_id", paper_id)\
+        .eq("difficulty", difficulty)\
+        .execute()
+    
+    if not result.data:
         raise HTTPException(status_code=404, detail=f"No {difficulty} quiz found for this paper")
-    return {"questions": quiz_data.get("questions", []), "difficulty": difficulty}
+    return {"questions": result.data[0].get("questions", []), "difficulty": difficulty}
 
 @router.post("/quiz/{paper_id}/{difficulty}")
 async def generate_quiz_items_by_difficulty(paper_id: str, difficulty: str, current_user: dict = Depends(get_current_user)):
     if difficulty not in ["easy", "medium", "hard"]:
         raise HTTPException(status_code=400, detail="Difficulty must be easy, medium, or hard")
     
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     questions = await generate_quiz_by_difficulty(paper["extracted_text"], difficulty)
 
-    # Upsert: replace questions for this difficulty level
-    await quizzes_collection.update_one(
-        {"paper_id": paper_id, "difficulty": difficulty},
-        {"$set": {"questions": questions}},
-        upsert=True
-    )
+    # Upsert: delete existing then insert
+    supabase.table("quizzes").delete().eq("paper_id", paper_id).eq("difficulty", difficulty).execute()
+    supabase.table("quizzes").insert({
+        "paper_id": paper_id,
+        "difficulty": difficulty,
+        "questions": questions
+    }).execute()
 
     return {"questions": questions, "difficulty": difficulty}
 
 @router.post("/ppt/{paper_id}")
 async def generate_ppt(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     slides = await generate_ppt_content(paper["extracted_text"])
 
-    await ppt_collection.insert_one({
+    supabase.table("ppt_content").insert({
         "paper_id": paper_id,
         "slides": slides
-    })
+    }).execute()
 
     return {"slides": slides}
 
@@ -167,9 +177,8 @@ async def expand_summary(paper_id: str, pattern: str, current_user: dict = Depen
     if pattern not in ["short", "detailed", "eli5", "bullets"]:
         raise HTTPException(status_code=400, detail="Pattern must be short, detailed, eli5, or bullets")
     
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     try:
         expanded = await expand_content(paper["extracted_text"], pattern)
@@ -180,9 +189,8 @@ async def expand_summary(paper_id: str, pattern: str, current_user: dict = Depen
 @router.post("/images/{paper_id}")
 async def describe_images(paper_id: str, current_user: dict = Depends(get_current_user)):
     """Extract and describe important images/figures from the paper"""
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     try:
         images = await generate_image_descriptions(paper["extracted_text"])
@@ -193,9 +201,8 @@ async def describe_images(paper_id: str, current_user: dict = Depends(get_curren
 @router.post("/ppt/{paper_id}/regenerate")
 async def regenerate_ppt(paper_id: str, current_user: dict = Depends(get_current_user)):
     """Regenerate presentation with enhanced prompt"""
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
     # Use a more detailed prompt for regeneration
     prompt_text = f"""Read this research paper and create 10 comprehensive presentation slides that cover ALL key aspects.
@@ -220,23 +227,24 @@ Paper content: {paper['extracted_text'][:30000]}"""
     except Exception:
         slides = [{"title": "Overview", "bullets": ["Key findings from the paper"]}]
 
-    # Upsert the new slides
-    await ppt_collection.update_one(
-        {"paper_id": paper_id},
-        {"$set": {"slides": slides}},
-        upsert=True
-    )
+    # Upsert: delete existing then insert
+    supabase.table("ppt_content").delete().eq("paper_id", paper_id).execute()
+    supabase.table("ppt_content").insert({
+        "paper_id": paper_id,
+        "slides": slides
+    }).execute()
 
     return {"slides": slides}
 
 @router.post("/ppt/{paper_id}/download")
 async def download_ppt(paper_id: str, current_user: dict = Depends(get_current_user)):
     """Download presentation as .pptx file"""
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
-    if not paper or paper["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
+    supabase = get_supabase()
+    paper = get_paper_or_404(supabase, paper_id, current_user["id"])
 
-    ppt_data = await ppt_collection.find_one({"paper_id": paper_id})
+    result = supabase.table("ppt_content").select("*").eq("paper_id", paper_id).execute()
+    ppt_data = result.data[0] if result.data else None
+    
     if not ppt_data or not ppt_data.get("slides"):
         raise HTTPException(status_code=404, detail="No presentation found. Generate PPT first.")
 

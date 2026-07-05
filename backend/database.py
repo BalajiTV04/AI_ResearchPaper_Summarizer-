@@ -1,21 +1,16 @@
-import motor.motor_asyncio
 import os
+from supabase import create_client, Client
 from dotenv import load_dotenv
-from bson import ObjectId
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-MONGO_DATABASE = os.getenv("MONGO_DATABASE", "research_summarizer")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
-db = client[MONGO_DATABASE]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-def get_db():
-    return db
+def get_supabase() -> Client:
+    return supabase
 
-def str_to_id(id_str):
-    return ObjectId(id_str)
-
-def id_to_str(obj_id):
-    return str(obj_id)
+def get_supabase_client() -> Client:
+    return supabase

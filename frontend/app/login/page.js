@@ -17,8 +17,12 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      // Login via backend API
       const data = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', data.token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Login failed');
@@ -30,8 +34,8 @@ export default function LoginPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <div className={styles.backToHome}>
-          <Link href="/">← Back to Home</Link>
+        <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+          <Link href="/" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '8px' }}>← Back to Home</Link>
         </div>
         <div className={styles.logo}>📄 Research AI</div>
         <h2>Welcome back</h2>

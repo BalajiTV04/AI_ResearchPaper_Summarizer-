@@ -2,20 +2,20 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 32px;
+  margin-bottom: clamp(20px, 4vw, 32px);
   flex-wrap: wrap;
   gap: 16px;
 }
 
 .pageTitle {
   font-family: 'Syne', sans-serif;
-  font-size: 2rem;
+  font-size: clamp(1.3rem, 3.5vw, 2rem);
   margin-bottom: 8px;
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 .headerActions {
@@ -24,14 +24,16 @@
 }
 
 .refreshBtn {
-  padding: 10px 24px;
+  padding: clamp(8px, 1.2vw, 10px) clamp(16px, 3vw, 24px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--glass);
   color: var(--text-primary);
   font-weight: 600;
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .refreshBtn:hover {
@@ -42,12 +44,12 @@
 /* Loading */
 .loadingState {
   text-align: center;
-  padding: 60px 20px;
+  padding: clamp(40px, 8vw, 60px) 20px;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: clamp(30px, 5vw, 40px);
+  height: clamp(30px, 5vw, 40px);
   border: 3px solid var(--border);
   border-top-color: var(--accent-purple);
   border-radius: 50%;
@@ -61,17 +63,19 @@
 
 .loadingState p {
   color: var(--text-muted);
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 /* Error */
 .errorState {
   text-align: center;
-  padding: 60px 20px;
+  padding: clamp(40px, 8vw, 60px) 20px;
 }
 
 .errorState p {
   color: #ef4444;
   margin-bottom: 16px;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 .retryBtn {
@@ -87,19 +91,19 @@
 /* Stats Grid */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: clamp(12px, 2vw, 16px);
+  margin-bottom: clamp(24px, 5vw, 40px);
 }
 
 .statCard {
   background: var(--glass);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: clamp(16px, 2vw, 20px);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: clamp(12px, 2vw, 16px);
   transition: all 0.2s;
 }
 
@@ -109,7 +113,7 @@
 }
 
 .statIcon {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .statInfo {
@@ -119,14 +123,14 @@
 
 .statValue {
   font-family: 'Syne', sans-serif;
-  font-size: 1.8rem;
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
   font-weight: 800;
   color: var(--accent-blue);
   line-height: 1;
 }
 
 .statLabel {
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.2vw, 0.8rem);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -136,19 +140,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: clamp(16px, 3vw, 24px);
   flex-wrap: wrap;
   gap: 16px;
 }
 
 .sectionHeader h2 {
   font-family: 'Syne', sans-serif;
-  font-size: 1.3rem;
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
 }
 
 .searchBar input {
-  padding: 10px 16px;
-  min-width: 300px;
+  padding: clamp(8px, 1.2vw, 10px) clamp(12px, 2vw, 16px);
+  min-width: min(300px, 100%);
+  font-size: clamp(0.85rem, 1.2vw, 0.95rem);
 }
 
 /* Users List */
@@ -179,7 +184,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px);
   cursor: pointer;
   transition: all 0.2s;
   flex-wrap: wrap;
@@ -193,30 +198,31 @@
 .userInfo {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: clamp(12px, 2vw, 16px);
 }
 
 .userAvatar {
-  width: 44px;
-  height: 44px;
+  width: clamp(36px, 5vw, 44px);
+  height: clamp(36px, 5vw, 44px);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 2vw, 1.2rem);
   color: white;
+  flex-shrink: 0;
 }
 
 .userName {
   font-family: 'Syne', sans-serif;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
   margin: 0;
 }
 
 .userEmail {
-  font-size: 0.85rem;
+  font-size: clamp(0.75rem, 1.2vw, 0.85rem);
   color: var(--text-muted);
   margin: 2px 0 0;
 }
@@ -224,20 +230,20 @@
 .userMeta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(8px, 1.5vw, 12px);
   flex-wrap: wrap;
 }
 
 .userStat {
-  font-size: 0.85rem;
+  font-size: clamp(0.75rem, 1.2vw, 0.85rem);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .usageBadge {
-  padding: 4px 10px;
+  padding: clamp(3px, 0.5vw, 4px) clamp(8px, 1.2vw, 10px);
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1vw, 0.75rem);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -262,7 +268,7 @@
 
 /* User Details */
 .userDetails {
-  padding: 0 24px 24px;
+  padding: 0 clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px);
   border-top: 1px solid var(--border);
   animation: slideDown 0.3s ease;
 }
@@ -278,14 +284,14 @@
 
 .detailSection h4 {
   font-family: 'Syne', sans-serif;
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 1.5vw, 0.95rem);
   margin-bottom: 12px;
   color: var(--accent-blue);
 }
 
 .noData {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: clamp(0.8rem, 1.2vw, 0.85rem);
   font-style: italic;
 }
 
@@ -300,19 +306,23 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: clamp(8px, 1.2vw, 10px) clamp(12px, 2vw, 16px);
   background: rgba(0,0,0,0.2);
   border-radius: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .paperTitle {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
+  word-break: break-word;
 }
 
 .paperMeta {
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1vw, 0.8rem);
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Quiz Grid */
@@ -323,7 +333,7 @@
 }
 
 .quizItem {
-  padding: 10px 16px;
+  padding: clamp(8px, 1.2vw, 10px) clamp(12px, 2vw, 16px);
   background: rgba(0,0,0,0.2);
   border-radius: 8px;
   display: flex;
@@ -334,11 +344,11 @@
 .quizDiff {
   font-weight: 700;
   text-transform: capitalize;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
 }
 
 .quizScore {
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1vw, 0.8rem);
   color: var(--text-muted);
 }
 
@@ -351,14 +361,14 @@
 
 .featureItem {
   flex: 1;
-  min-width: 140px;
-  padding: 12px 16px;
+  min-width: clamp(120px, 20vw, 140px);
+  padding: clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 16px);
   background: rgba(0,0,0,0.2);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
 }
 
 .featureItem.active {
@@ -368,36 +378,111 @@
 /* Empty */
 .emptyState {
   text-align: center;
-  padding: 60px 20px;
+  padding: clamp(40px, 8vw, 60px) 20px;
   color: var(--text-muted);
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Small phones */
+@media (max-width: 480px) {
   .statsGrid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .userCardHeader {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .userMeta {
     width: 100%;
+    justify-content: flex-start;
   }
-  
-  .searchBar input {
-    min-width: 200px;
-    width: 100%;
+
+  .featureGrid {
+    flex-direction: column;
   }
-  
+
+  .featureItem {
+    min-width: 100%;
+  }
+
   .sectionHeader {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
+  .searchBar input {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .refreshBtn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .userCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .userMeta {
+    width: 100%;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .searchBar input {
+    min-width: 100%;
+    width: 100%;
+  }
+
   .featureGrid {
     flex-direction: column;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .userCardHeader {
+    flex-wrap: wrap;
+  }
+
+  .userMeta {
+    flex-wrap: wrap;
+  }
+}
+
+/* Laptop and above */
+@media (min-width: 1025px) {
+  .statsGrid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }

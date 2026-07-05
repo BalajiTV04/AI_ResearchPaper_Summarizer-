@@ -43,6 +43,13 @@ const nextConfig = {
 
   // Standalone output for self-hosting (optional)
   // output: 'standalone',
+
+  // Fix workspace root detection with multiple lockfiles
+  experimental: {
+    turbo: {
+      root: process.cwd(),
+    },
+  },
 };
 
 module.exports = nextConfig;

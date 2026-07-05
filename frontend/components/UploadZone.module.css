@@ -1,12 +1,13 @@
 .container {
-  max-width: 500px;
+  max-width: min(500px, 100%);
   margin: 0 auto;
+  padding: 0 8px;
 }
 
 .dropZone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 48px 24px;
+  padding: clamp(32px, 8vw, 48px) clamp(16px, 4vw, 24px);
   text-align: center;
   background: var(--glass);
   transition: all 0.3s;
@@ -20,18 +21,19 @@
 }
 
 .icon {
-  font-size: 4rem;
-  margin-bottom: 16px;
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  margin-bottom: clamp(12px, 2vw, 16px);
 }
 
 .dropZone h3 {
   font-family: 'Syne', sans-serif;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
   margin-bottom: 8px;
 }
 
 .dropZone p {
   color: var(--text-muted);
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
 }
 
 .input {
@@ -45,17 +47,19 @@
 }
 
 .hint {
-  font-size: 0.85rem;
+  font-size: clamp(0.75rem, 1.2vw, 0.85rem);
   color: var(--text-muted);
-  margin-top: 16px;
+  margin-top: clamp(12px, 2vw, 16px);
 }
 
 .fileInfo {
   margin-top: 20px;
-  padding: 16px;
+  padding: clamp(12px, 2vw, 16px);
   background: rgba(255,255,255,0.05);
   border-radius: var(--radius);
   text-align: center;
+  font-size: clamp(0.85rem, 1.2vw, 0.95rem);
+  word-break: break-word;
 }
 
 .progressBar {
@@ -85,16 +89,30 @@
 .uploadBtn {
   margin-top: 24px;
   width: 100%;
-  padding: 16px;
+  padding: clamp(12px, 2vw, 16px);
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   color: white;
   border: none;
   border-radius: var(--radius);
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
 }
 
 .uploadBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 4px;
+  }
+
+  .dropZone {
+    padding: 24px 12px;
+  }
 }

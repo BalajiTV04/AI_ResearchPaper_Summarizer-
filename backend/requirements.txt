@@ -2,12 +2,10 @@ fastapi
 uvicorn[standard]
 gunicorn
 python-multipart
-motor
-pymongo
+supabase
 requests
 openai
 python-jose[cryptography]
-bcrypt==4.0.1
 pymupdf
 python-dotenv
 python-pptx

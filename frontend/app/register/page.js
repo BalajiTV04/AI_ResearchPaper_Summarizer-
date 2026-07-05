@@ -18,6 +18,7 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
+      // Register via backend API (uses service_role key to auto-confirm)
       await api.post('/auth/register', { name, email, password });
       router.push('/login?registered=true');
     } catch (err) {

@@ -1,9 +1,8 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from auth import get_current_user
-from models import papers_collection, bookmarks_collection
-from database import str_to_id, id_to_str
+from database import get_supabase
 from services.pdf_service import extract_text_from_pdf, save_uploaded_file, extract_images_from_pdf
 from services.ai_service import extract_paper_metadata
 
@@ -26,6 +25,7 @@ async def upload_paper(file: UploadFile = File(...), current_user: dict = Depend
     title = os.path.splitext(file.filename)[0]
     filename = file.filename
 
+    supabase = get_supabase()
     paper_doc = {
         "user_id": current_user["id"],
         "title": title,
@@ -33,49 +33,68 @@ async def upload_paper(file: UploadFile = File(...), current_user: dict = Depend
         "file_path": file_path,
         "extracted_text": text,
         "page_count": page_count,
-        "uploaded_at": datetime.utcnow()
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
     }
-    result = await papers_collection.insert_one(paper_doc)
+    
+    result = supabase.table("papers").insert(paper_doc).execute()
+    new_paper = result.data[0]
 
-    return {"paper_id": str(result.inserted_id), "title": title, "page_count": page_count}
+    return {"paper_id": new_paper["id"], "title": title, "page_count": page_count}
 
 @router.get("/")
 async def get_papers(current_user: dict = Depends(get_current_user)):
-    cursor = papers_collection.find({"user_id": current_user["id"]})
-    papers = []
-    async for doc in cursor.sort("uploaded_at", -1):
-        doc["id"] = str(doc["_id"])
-        doc.pop("_id", None)
-        doc.pop("extracted_text", None)
-        papers.append(doc)
+    supabase = get_supabase()
+    result = supabase.table("papers")\
+        .select("id, title, filename, page_count, uploaded_at")\
+        .eq("user_id", current_user["id"])\
+        .order("uploaded_at", desc=True)\
+        .execute()
+    
+    papers = result.data if result.data else []
     return papers
 
 @router.get("/{paper_id}")
 async def get_paper(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
+    supabase = get_supabase()
+    result = supabase.table("papers").select("*").eq("id", paper_id).single().execute()
+    
+    paper = result.data
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     if paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    paper["id"] = str(paper["_id"])
-    paper.pop("_id", None)
     return paper
 
 @router.delete("/{paper_id}")
 async def delete_paper(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
+    supabase = get_supabase()
+    
+    # Get paper first
+    result = supabase.table("papers").select("*").eq("id", paper_id).single().execute()
+    paper = result.data
+    
     if not paper or paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
     if os.path.exists(paper.get("file_path", "")):
         os.remove(paper["file_path"])
 
-    await papers_collection.delete_one({"_id": str_to_id(paper_id)})
+    # Delete related data
+    supabase.table("papers").delete().eq("id", paper_id).execute()
+    supabase.table("summaries").delete().eq("paper_id", paper_id).execute()
+    supabase.table("quizzes").delete().eq("paper_id", paper_id).execute()
+    supabase.table("ppt_content").delete().eq("paper_id", paper_id).execute()
+    supabase.table("chat_history").delete().eq("paper_id", paper_id).execute()
+    supabase.table("bookmarks").delete().eq("paper_id", paper_id).execute()
+    
     return {"message": "Paper deleted successfully"}
 
 @router.post("/{paper_id}/extract-metadata")
 async def extract_metadata(paper_id: str, current_user: dict = Depends(get_current_user)):
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
+    supabase = get_supabase()
+    result = supabase.table("papers").select("*").eq("id", paper_id).single().execute()
+    paper = result.data
+    
     if not paper or paper["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Paper not found or unauthorized")
 
@@ -83,17 +102,17 @@ async def extract_metadata(paper_id: str, current_user: dict = Depends(get_curre
     metadata = await extract_paper_metadata(paper["extracted_text"])
 
     # Save metadata to the paper document
-    await papers_collection.update_one(
-        {"_id": str_to_id(paper_id)},
-        {"$set": {"metadata": metadata}}
-    )
+    supabase.table("papers").update({"metadata": metadata}).eq("id", paper_id).execute()
 
     return metadata
 
 @router.get("/{paper_id}/images")
 async def get_paper_images(paper_id: str, current_user: dict = Depends(get_current_user)):
     """Extract and return images embedded in the PDF file"""
-    paper = await papers_collection.find_one({"_id": str_to_id(paper_id)})
+    supabase = get_supabase()
+    result = supabase.table("papers").select("*").eq("id", paper_id).single().execute()
+    paper = result.data
+    
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     if paper["user_id"] != current_user["id"]:
@@ -113,17 +132,23 @@ async def get_paper_images(paper_id: str, current_user: dict = Depends(get_curre
 
 @router.post("/{paper_id}/bookmark")
 async def toggle_bookmark(paper_id: str, current_user: dict = Depends(get_current_user)):
-    existing = await bookmarks_collection.find_one({
-        "user_id": current_user["id"],
-        "paper_id": paper_id
-    })
+    supabase = get_supabase()
+    
+    # Check if bookmark exists
+    result = supabase.table("bookmarks")\
+        .select("*")\
+        .eq("user_id", current_user["id"])\
+        .eq("paper_id", paper_id)\
+        .execute()
+    
+    existing = result.data[0] if result.data else None
 
     if existing:
-        await bookmarks_collection.delete_one({"_id": existing["_id"]})
+        supabase.table("bookmarks").delete().eq("id", existing["id"]).execute()
         return {"bookmarked": False}
     else:
-        await bookmarks_collection.insert_one({
+        supabase.table("bookmarks").insert({
             "user_id": current_user["id"],
             "paper_id": paper_id
-        })
+        }).execute()
         return {"bookmarked": True}
