@@ -8,11 +8,6 @@ Upload research papers and get AI-powered summaries, quizzes, chat, and presenta
 
 **Admin Login URL:** `/admin/login`
 
-**Default Credentials:**
-| Field | Value |
-|-------|-------|
-| Username | `admin` |
-| Password | `admin123` |
 
 **To change admin credentials**, edit `backend/.env`:
 ```
